@@ -54,11 +54,12 @@ const login=async(req,res)=>{
         const token =  jwt.sign({userId:user.id,role:user.role},process.env.JWT_SECRET,{expiresIn:'1h'})
 
         // send token via cookies
+        const isProduction = process.env.NODE_ENV === "production";
         res.cookie('token',token,{
             httpOnly:true,
-            secure:process.env.NODE_ENV==='production',
-            sameSite:'strict',
-            maxAge:60*60*1000  // 1hr
+            secure:isProduction,
+            sameSite:isProduction ? "None":"Lax",
+            maxAge:24*60*60*1000  // 1hr
         })
 
         res.status(200).json({
