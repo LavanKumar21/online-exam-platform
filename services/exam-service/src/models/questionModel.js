@@ -65,6 +65,21 @@ class QuestionModel{
         const result=await pool.query(query,values)
         return result.rows[0];
     }
+
+    static async updateQuestionById(questionId,updatedData){
+        const query=`
+        UPDATE questions
+        SET question_text=COALESCE($2,question_text),
+            marks=COALESCE($3,marks),
+            difficulty=COALESCE($4,difficulty),
+            updated_at=NOW()
+        WHERE id=$1 AND is_deleted=FALSE
+        `;
+        const {question_text,marks,difficulty}=updatedData
+        const values=[questionId,question_text,marks,difficulty];
+        const result=await pool.query(query,values)
+        return result.rows[0];
+    }
 }
 
 module.exports=QuestionModel;

@@ -11,6 +11,7 @@ class UserModel{
         mobile_number VARCHAR(15),
         role VARCHAR(50) DEFAULT 'student',
         course VARCHAR(100),
+        is_deleted BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT NOW()
         )
         `;
@@ -44,6 +45,14 @@ class UserModel{
         return result.rows[0];
     }
 
+    static async findById(userId){
+        const query=`
+         SELECT * FROM users WHERE id=$1
+        `
+        const values=[userId];
+        const result=await pool.query(query,values)
+        return result.rows[0];
+    }
 
     static async getUserById(userId){
         const query=`
@@ -64,6 +73,14 @@ class UserModel{
         return result.rowCount>0;
     }
 
+    static async deleteUser(userId){
+        const query=`
+        UPDATE users SET is_deleted=true WHERE id=$1
+        `;
+        const values=[userId];
+        const result=await pool.query(query,values);
+        return result.rowCount>0;
+    }
 }
 
 module.exports=UserModel;

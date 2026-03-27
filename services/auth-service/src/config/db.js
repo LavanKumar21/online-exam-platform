@@ -7,6 +7,10 @@ const pool=new Pool({
     database: process.env.DB_NAME || "mydatabase",
     password: process.env.DB_PASSWORD || "root",
     port: process.env.DB_PORT || 5432,
+    // connectionString: process.env.DATABASE_URL,
+    //  ssl: {
+    //     rejectUnauthorized: false
+    // },
     max:20,
     idleTimeoutMillis:30000,
     connectionTimeoutMillis:2000
@@ -18,7 +22,7 @@ const pool=new Pool({
 const connectDB = async(retries=5,delay=2000) => {
     for(let i=0;i<retries;i++){
         try {
-            await pool.connect();
+            await pool.query("SELECT 1");
             console.log('✅ Connected to PostgreSQL database');
             break;
         } catch (err) {

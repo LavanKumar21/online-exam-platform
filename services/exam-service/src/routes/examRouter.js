@@ -1,7 +1,7 @@
 const express=require("express");
 const { authMiddleware } = require("../middleware/examAuthMiddleware");
 const { authorizedRoles } = require("../middleware/roleMiddleware");
-const { createExamController, getexamByIdController, updateExamByIdController, deleteExamByIdController, getAllExamsByAdminController, addQuestionsToExamController, getAllQuestionsOfExamController, getAllQuestionsOfExamForStudentController, deleteQuestionFromExamController } = require("../controllers/examController");
+const { createExamController, getexamByIdController, updateExamByIdController, deleteExamByIdController, getAllExamsByAdminController, addQuestionsToExamController, getAllQuestionsOfExamController, getAllQuestionsOfExamForStudentController, deleteQuestionFromExamController, updateQuestionInExamController, getAllExamsController,  liveExamController, endExamController } = require("../controllers/examController");
 
 const examRouter=express.Router();
 
@@ -21,8 +21,11 @@ examRouter.delete("/exam/:examId",authMiddleware,authorizedRoles("admin"),delete
 
 examRouter.get("/admin/exams",authMiddleware,authorizedRoles("admin"),getAllExamsByAdminController)
 
-// Route to update the exam status (active/inactive) by ID
-examRouter.patch("/exam/status/:examId/",authMiddleware,authorizedRoles("admin"),)
+//! Route to update the exam live (ongoing) by ID
+examRouter.patch("/exam/live/:examId/",authMiddleware,authorizedRoles("admin"),liveExamController)
+
+//! Route to update the exam end (completed) by ID 
+examRouter.patch("/exam/end/:examId/",authMiddleware,authorizedRoles("admin"),endExamController)
 
 // Route to add questions to an exam
 examRouter.post("/exam/:examId/add-questions",authMiddleware,authorizedRoles("admin"),addQuestionsToExamController)
@@ -38,5 +41,15 @@ examRouter.get("/exam/:examId/student/questions",authMiddleware,authorizedRoles(
 // Route to delete a question from an exam
 
 examRouter.delete("/exam/:examId/question/:questionId",authMiddleware,authorizedRoles("admin"),deleteQuestionFromExamController)
+
+
+// Route to update a question in an exam
+examRouter.patch("/exam/:examId/question/:questionId",authMiddleware,authorizedRoles("admin"),updateQuestionInExamController)
+
+
+// Route to fetch all exams from all admin for students
+
+examRouter.get("/all-exams",authMiddleware,authorizedRoles("student"),getAllExamsController)
+
 
 module.exports=examRouter;

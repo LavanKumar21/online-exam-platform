@@ -88,6 +88,21 @@ class ExamQuestionModel{
       return result.rows;
     }
 
+    static async getExamQuestionById(examId,questionId){
+      const query=`
+      SELECT 
+           eq.exam_id,
+           e.created_by,
+           e.status
+      FROM exam_questions eq
+      JOIN exams e ON e.id=eq.exam_id
+      WHERE eq.exam_id=$1 AND eq.question_id=$2     
+      `;
+      const values=[examId,questionId];
+      const result=await pool.query(query,values);
+      return result.rows[0];
+    }
+
 }
 
 module.exports=ExamQuestionModel;

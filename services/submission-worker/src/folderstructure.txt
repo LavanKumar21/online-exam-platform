@@ -1,0 +1,22 @@
+src/
+│
+├── config/
+│   ├── redis.js        ✅ Redis connection
+│   └── db.js           ✅ PostgreSQL connection
+│
+├── queues/
+│   ├── examQueue.js        ✅ scheduling queue
+│   └── submissionQueue.js  ✅ submission queue
+│
+├── workers/
+│   ├── exam.worker.js       ✅ START / END exam
+│   └── submission.worker.js ✅ process submissions
+│
+├── services/
+│   ├── exam.service.js
+│   └── submission.service.js
+│
+├── models/
+│   └── (optional DB logic)
+│
+└── index.js   ✅ entry point (starts workers)

@@ -2,6 +2,7 @@ const UserModel = require("../models/userModel")
 const bcrypt=require("bcryptjs")
 const jwt=require("jsonwebtoken")
 const sendEmail = require("../config/email")
+const emailTemplate = require("../utils/emailtemplate")
 
 // register controller
 const register=async(req,res)=>{
@@ -27,20 +28,12 @@ const register=async(req,res)=>{
             role:role || 'student',
             course
          })
-         sendEmail(email,"Welcome to EduPlatform",  `
-        <h2>Hello ${username},</h2>
-        <p>Your account has been successfully created.</p>
-        <p>Role: ${role}</p>
-        <p>Course: ${course}</p>
-        <br/>
-        <p>Thank you for joining us.</p>
-    `)
+         sendEmail(email,"Welcome to EduPlatform", emailTemplate(username,role,course))
             res.status(201).json({user:newUser});
-         // 
 
     } catch (error) {
         console.error(error);
-        res.status(500).send('Server error');
+        res.status(500).json({message:"Server Error",error:error.message});
     }
 }
 
@@ -94,8 +87,8 @@ const resetPassword=async(req,res)=>{
     const {newPassword,oldPassword}=req.body
 
     try {
-        const user= await UserModel.getUserById(userId)
-
+        const user= await UserModel.findById(userId)
+        console.log(user)
         if(!user) return res.status(404).json({message:"user not found",sucess:false});
 
         // compare old password
@@ -112,6 +105,7 @@ const resetPassword=async(req,res)=>{
 
         res.status(200).json({message:"Password updated successfully",sucess:true});
     } catch (error) {
+        console.log(error)
         return res.status(500).json({message:"Internal server error in reset password",sucess:false});
     }
 }
@@ -150,7 +144,16 @@ const verifyEmail=async(req,res)=>{
 
 }
 
+const deleteUser=async(req,res)=>{
+    const {userId}=req.params
+    try {
+        const result= await UserModel.deleteUser(userId)
+        if(!result) return res.status(404).json({message:"User not found or already deleted",sucess:false})
+        res.status(200).json({message:"User deleted successfully",sucess:true})                     
+    } catch (error) {
+        return res.status(500).json({message:"Internal server error in delete user",sucess:false})
+    }
+}
 
 
-
-module.exports={register,login,viewProfile,logout,resetPassword}
+module.exports={register,login,viewProfile,logout,resetPassword,deleteUser}

@@ -31,7 +31,7 @@ const createExamController=async(req,res)=>{
                 created_by:adminId,
                 status:"scheduled",
             }
-            console.log(examData)
+            // console.log(examData)
             // save the exam
             const newExam=await ExamModel.createExam(examData);
 
@@ -102,7 +102,7 @@ const deleteExamByIdController=async(req,res)=>{
         const adminId=req.user.userId;
         // find the exam
         const exam= await ExamModel.getExamById(examId);
-        if(!exam || !exam.is_deleted ) return res.status(404).json({message:"Exam not found",success:false});
+        if(!exam || exam.is_deleted ) return res.status(404).json({message:"Exam not found",success:false});
 
         // check the admin ownership
         if(exam.created_by !== adminId) return res.status(403).json({message:"You are not authorized to delete this exam",success:false})
@@ -132,7 +132,22 @@ const getAllExamsByAdminController=async(req,res)=>{
     }
 }
 
+// controller to get all exams from all admin for students
 
+const getAllExamsController=async (req,res) => {
+    try {
+        const exams= await ExamModel.getAllExams();
+        // console.log(exams)
+        if(!exams || exams.length ===0){
+            return res.status(404).json({message:"No exams found",success:false});
+        }
+        return res.status(200).json({exams,success:true});
+        
+    } catch (error) {
+        return res.status(500).json({message:"Internal server error in get all exams for students",success:false});
+    }
+    
+}
 
 // add questions to particular exam 
 
@@ -299,6 +314,7 @@ const getAllQuestionsOfExamForStudentController=async(req,res)=>{
         const{examId}=req.params
         const now=new Date();
         const exam=await ExamModel.getExamById(examId);
+        // console.log(exam)
 
         if(!exam) return res.status(404).json({message:"Exam not found",success:false});
 
@@ -330,9 +346,9 @@ const getAllQuestionsOfExamForStudentController=async(req,res)=>{
         // Transform the flat list into a structured format
       function formatExamData(questions){
            const examData={
-            exam_id: dbResults[0].exam_id,
-            title: dbResults[0].title,
-            duration: dbResults[0].duration,
+            exam_id: exam.exam_id,
+            title: exam.title,
+            duration: exam.duration,
             questions:[]
         }
          const questionMap = new Map();
@@ -360,7 +376,7 @@ const getAllQuestionsOfExamForStudentController=async(req,res)=>{
 
       // set Redis  with ttl 
       const ttlseconds=Math.floor((endingTime-now)/1000);
-       await redisClient.setEx(redisKey, ttlseconds, JSON.stringify(formattedData));
+    //    await redisClient.setEx(redisKey, ttlseconds, JSON.stringify(formattedData));
 
     return res.status(200).json({
       success: true,
@@ -390,9 +406,17 @@ const deleteQuestionFromExamController=async(req,res)=>{
         if(!exam) return res.status(404).json({ message: "Exam not found or unauthorized to delete question for this exam", success: false });
         // check question is exist or not
         const question= await QuestionModel.getQuestionById(questionId)
-
         if(!question) return res.status(404).json({message:"question is not found",success:false})
+        // check the question belong to the exam or not
 
+        const examQuestion=await ExamQuestionModel.getExamQuestionById(examId,questionId)
+
+        if(!examQuestion) return res.status(404).json({message:"Question does not belong to this exam",success:false});
+
+        // chect the exam status
+        if(examQuestion.status === "completed" || examQuestion.status ==="ongoing"){
+            return res.status(400).json({ success: false, message: "Cannot delete questions of a completed exam" });
+        }
 
         // Delete the question from exam
         const deletedQuestion=await QuestionModel.deleteQuestionById(questionId)
@@ -405,4 +429,120 @@ const deleteQuestionFromExamController=async(req,res)=>{
     }
 }
 
-module.exports={createExamController,getexamByIdController,updateExamByIdController,deleteExamByIdController,getAllExamsByAdminController,addQuestionsToExamController,getAllQuestionsOfExamController,getAllQuestionsOfExamForStudentController,deleteQuestionFromExamController};
+
+// Update a question in an exam controller
+const updateQuestionInExamController=async(req,res)=>{
+    const {examId,questionId}=req.params;
+    const adminId=req.user.userId;
+
+    const {question_text,difficulty,marks,options}=req.body;
+
+   try {
+     // check the question is exist or not
+    const question = await QuestionModel.getQuestionById(questionId);
+
+    if(!question) return res.status(404).json({message:"Question not found",success:false});
+
+    // check the exam is exist or not and ownership
+    const exam= await ExamModel.getExamByAdminAndExamID(examId,adminId);
+
+    if(!exam) return res.status(404).json({message:"Exam not found or unauthorized to update question for this exam",success:false});
+
+    // check the question belong to the exam or not
+    const examQuestion= await ExamQuestionModel.getExamQuestionById(examId,questionId);
+    if(!examQuestion) return res.status(404).json({message:"Question does not belong to this exam",success:false});
+
+    // chect the exam status
+    if(examQuestion.status === "completed" || examQuestion.status ==="ongoing"){
+        return res.status(400).json({ success: false, message: "Cannot update questions of a completed exam" });
+    }
+    // update question details
+
+    const updatedQuestion= await QuestionModel.updateQuestionById(questionId,{question_text,marks,difficulty})
+
+    // update options if provided
+    if(options && Array.isArray(options)){
+        const correctOptionCount=options.filter(otp=>otp.is_correct).length;
+
+        if(correctOptionCount<1){
+            return res.status(400).json({message:"At least one option must be correct",success:false});
+        }
+        // update each option by option id
+        for(const opt of options){
+            if(!opt.id){
+                return res.status(400).json({message:"Option ID is required for updating option",success:false});
+            }
+             await OptionModel.updateOption(opt.id,{
+                option_text:opt.option_text,
+                is_correct:opt.is_correct
+             })
+        }
+
+    }
+    return res.status(200).json({message:"Question updated successfully",question:updatedQuestion,success:true});
+
+
+   } catch (error) {
+    return res.status(500).json({message:"Internal server error in update question in exam",success:false});
+   }
+
+
+
+
+
+}
+
+// Controller to update the exam live (ongoing) by ID
+
+const liveExamController=async(req,res)=>{
+    try {
+        const {examId}=req.params;
+        const adminId=req.user.userId;
+        // find the exam
+        const exam= await ExamModel.getExamByAdminAndExamID(examId,adminId);
+        if(!exam) return res.status(404).json({message:"Exam not found",success:false});
+        // check the admin ownership
+        if(exam.created_by !== adminId) return res.status(403).json({message:"You are not authorized to update this exam",success:false})
+        // update exam status
+        let newStatus;
+        if(exam.status === "scheduled"){
+            newStatus="ongoing";
+        }else{
+            return res.status(400).json({message:"Cannot update status of a completed exam",success:false})
+        }
+        const updatedExam=await ExamModel.updateExamStatusById(examId,adminId,newStatus);
+        if(!updatedExam) return res.status(400).json({message:"Unable to update the exam status",success:false})
+        return res.status(200).json({message:`Exam status updated to ${newStatus} successfully`,exam:updatedExam,success:true});
+    } catch (error) {
+        return res.status(500).json({message:"Internal server error in update exam status",success:false});
+    }
+}
+
+// Controller to update the exam end(completed) by ID
+
+const endExamController=async(req,res)=>{
+    try {
+        const {examId}=req.params;
+        const adminId=req.user.userId;
+        // find the exam
+        const exam= await ExamModel.getExamByAdminAndExamID(examId,adminId);
+        if(!exam) return res.status(404).json({message:"Exam not found",success:false});
+        // check the admin ownership
+        if(exam.created_by !== adminId) return res.status(403).json({message:"You are not authorized to update this exam",success:false})
+        // update exam status
+        let newStatus;
+        if(exam.status === "ongoing"){
+            newStatus="completed";
+        }else{
+            return res.status(400).json({message:"Cannot update status of a completed exam",success:false})
+        }
+        const updatedExam=await ExamModel.updateExamStatusById(examId,adminId,newStatus);
+        if(!updatedExam) return res.status(400).json({message:"Unable to update the exam status",success:false})
+        return res.status(200).json({message:`Exam status updated to ${newStatus} successfully`,exam:updatedExam,success:true});
+    } catch (error) {
+        return res.status(500).json({message:"Internal server error in update exam status",success:false});
+    }
+}
+
+
+module.exports={createExamController,getexamByIdController,updateExamByIdController,deleteExamByIdController,getAllExamsByAdminController,addQuestionsToExamController,getAllQuestionsOfExamController,getAllQuestionsOfExamForStudentController,deleteQuestionFromExamController,updateQuestionInExamController,getAllExamsController,liveExamController,endExamController};

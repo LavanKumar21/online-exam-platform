@@ -5,10 +5,11 @@ const cookieParser=require('cookie-parser');
 const examRouter = require("./routes/examRouter");
 const { connectDB } = require("./config/db");
 const ExamModel = require("./models/examModel");
-const { examQueue } = require('./queues/examQueue');
+// const { examQueue } = require('./queues/examQueue');
 const QuestionModel = require('./models/questionModel');
 const ExamQuestionModel = require('./models/examquestionModel');
 const OptionModel = require('./models/question_optionsModel');
+const { redisConnection } = require('./config/redis');
 const PORT=process.env.PORT || 4002
 
 
@@ -48,7 +49,20 @@ app.get("/health",(req,res)=>{
 })
 
 // Import and start the exam scheduler worker
-require("./workers/examScheduler.worker");
+// require("./workers/examScheduler.worker");
+
+redisConnection.on("connect", () => {
+  console.log("✅ Redis connected successfully");
+});
+redisConnection.on("ready", () => {
+  console.log("🚀 Redis is ready to use");
+});
+
+redisConnection.on("error", (err) => {
+  console.error("❌ Redis connection error:", err);
+});
+
+
 
  // Start the server after initializing the database
     app.listen(PORT, () => {

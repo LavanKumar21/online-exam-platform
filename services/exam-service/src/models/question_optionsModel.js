@@ -52,6 +52,33 @@ static async insertOption(option){
     const result=await pool.query(query,values);
     return result.rows[0];
 }
+
+static async getOptionsByQuestionId(questionId){
+    const query=`
+        SELECT *
+        FROM questionoptions
+        WHERE question_id=$1 AND is_deleted=False
+    `;
+    const values=[questionId];
+    const result= await pool.query(query,values);
+    return result.rows[0]
+}
+
+static async updateOption(optionId,data){
+    const {option_text,is_correct}=data;
+
+    const query=`
+        UPDATE questionoptions
+        SET option_text=$1, is_correct=$2,updated_at=NOW()
+        WHERE id=$3 AND is_deleted=False
+        RETURNING *
+    `;
+    const values=[option_text,is_correct,optionId];
+    const result =await pool.query(query,values)
+    return result.rows[0];
+}
+
+
     
 }
 module.exports=OptionModel;

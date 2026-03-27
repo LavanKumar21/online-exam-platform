@@ -140,6 +140,17 @@ class ExamModel{
         return result.rows;
     }
 
+    // Get all exams for students
+    static async getAllExams(){
+        const query=`
+        SELECT * 
+        FROM exams
+        WHERE is_deleted=FALSE ;
+        `;
+        const result=await pool.query(query)
+        return result.rows;
+    }
+
     // get status of exam by ID 
     static async getExamStatusById(examId){
         const query=`
@@ -152,14 +163,14 @@ class ExamModel{
     }
 
     // update exam status by ID
-    static async updateExamStatusById(examId,status){
+    static async updateExamStatusById(examId,adminId,status){
         const query=`
         UPDATE exams
         SET status=$1, updated_at=NOW()
-        WHERE id=$2
+        WHERE id=$2 AND created_by=$3
         RETURNING *;
         `;
-        const values=[status,examId];
+        const values=[status,examId,adminId];
 
         const result=await pool.query(query,values);
         return result.rows[0];
