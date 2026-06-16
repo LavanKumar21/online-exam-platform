@@ -2,9 +2,10 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
-const { connectDB } = require("../../results-service/src/config/db");
+
 const ExamSubmission = require("./models/submission_exam");
 const submissionExamRoute = require("./routes/submission_route");
+const { connectDB } = require("./config/db");
 
 const app=express();
 app.use(cors());
