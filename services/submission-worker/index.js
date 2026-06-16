@@ -1,5 +1,7 @@
 // ✅ entry point (starts workers)
 require("dotenv").config();
+const express = require("express");
+const app = express();
 const { connectDB, pool } = require("./src/config/db");
 // Import redis connection
 const { redisConnection } = require("./src/config/redis");
@@ -67,4 +69,13 @@ process.on("unhandledRejection", (err) => {
 });
 
 
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    timestamp: Date.now()
+  });
+});
 
+app.listen(process.env.PORT || 4005, () => {
+  console.log(`Submission Worker is running on port ${process.env.PORT || 4005}`);
+});
